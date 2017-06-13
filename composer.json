@@ -1,5 +1,5 @@
 {
-	"name":        "illusorium/kohana-minion",
+	"name":        "illusorium/minion",
 	"type":        "kohana-module",
 	"description": "Fork of official kohana module with support of queuing tasks",
 	"homepage":    "http://kohanaframework.org",
