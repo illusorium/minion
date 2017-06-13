@@ -1,16 +1,52 @@
 <?php defined('SYSPATH') or die('No direct script access.');
 /**
  * Interface that all minion tasks must implement
- *
- * @package    Kohana
- * @category   Minion
- * @author     Kohana Team
- * @copyright  (c) 2009-2011 Kohana Team
- * @license    http://kohanaframework.org/license
+ * Implemented queueing minion tasks via php-resque
  */
 abstract class Kohana_Minion_Task {
 
-	/**
+    /**
+     * If a task called with this parameter, it will be queued (instead of being executed immediately)
+     *
+     * php index.php --task=task:name --resque
+     */
+    protected static $queuingParameter = 'resque';
+
+
+    /**
+     * Whether to allow passing custom queue name under $this->customQueueParameter ("--queue") parameter
+     *
+     * php index.php --task=task:name --resque --queue=customQueue
+     */
+    protected $allowCustomQueues = false;
+
+
+    /**
+     * Name of parameter containing custom queue name
+     * !!! Works only if $this->allowCustomQueues === true
+     *
+     * Example:
+     *     $this->customQueueParameter = 'my-custom-queue',
+     * Then if call
+     *     php index.php --task=task:name --resque --my-custom-queue=customQ,
+     * then task will be added to customQ queue
+     */
+    protected $customQueueParameter = 'queue';
+
+
+    /**
+     * Default queue name
+     */
+    protected $queueName = 'minion';
+
+
+    /**
+     * Job id in php-resque
+     */
+    protected $token;
+
+
+	 /**
 	 * The separator used to separate different levels of tasks
 	 * @var string
 	 */
@@ -125,11 +161,29 @@ abstract class Kohana_Minion_Task {
 
 	protected $_method = '_execute';
 
-	protected function __construct()
+	public function __construct()
 	{
 		// Populate $_accepted_options based on keys from $_options
 		$this->_accepted_options = array_keys($this->_options);
-	}
+
+        // check if the task has parameters with names of queue
+        if (array_key_exists(self::$queuingParameter, $this->_options)) {
+
+            if (array_key_exists(self::$queuingParameter, $this->get_accepted_options())) {
+                throw new Minion_Exception_InvalidTask(
+                    'Parameter :param is used in task options',
+                    array(':param' => self::$queuingParameter)
+                );
+            }
+
+            if (array_key_exists($this->customQueueParameter, $this->get_accepted_options())) {
+                throw new Minion_Exception_InvalidTask(
+                    'Parameter :param is used in task options',
+                    array(':param' => $this->customQueueParameter)
+                );
+            }
+        }
+    }
 
 	/**
 	 * The file that get's passes to Validation::errors() when validation fails
@@ -224,12 +278,58 @@ abstract class Kohana_Minion_Task {
 		return $this->_errors_file;
 	}
 
+	public function execute()
+    {
+        $class = get_class($this);
+        if (
+            !array_key_exists(self::$queuingParameter, $this->_options)
+            OR $class == 'Task_Resque' // prevent worker process from being queued
+        ) {
+
+            // instantly execute Minion_Task (standard Kohana minion behaviour)
+            $this->executeWithoutQueue();
+
+        } else {
+
+            // unset this option to prevent "is not a valid option for this task!" error
+            // when worker will start executing the task
+            unset($this->_options[self::$queuingParameter]);
+
+            if ($this->allowCustomQueues) {
+
+                if (array_key_exists($this->customQueueParameter, $this->_options)) {
+                    $queue = $this->_options[$this->customQueueParameter];
+                    if (!empty($queue)) {
+                        $this->queueName = $queue;
+                    }
+
+                    // unset this option to prevent "is not a valid option for this task!" error
+                    // when worker will start executing the task
+                    unset($this->_options[$this->customQueueParameter]);
+                }
+            }
+
+            try {
+                // Queuing this task
+                $this->token = Resque::enqueue($this->queueName, $class, $this->_options, true);
+
+                Minion_CLI::write("Queued job $class with token {$this->token}");
+
+            } catch (Exception $e) {
+                Minion_CLI::write("Error queueing $class: {$e->getMessage()}");
+                Minion_CLI::write("Executing $class instantly");
+                $this->executeWithoutQueue();
+            }
+        }
+    }
+
+
 	/**
 	 * Execute the task with the specified set of options
 	 *
 	 * @return null
 	 */
-	public function execute()
+	public function executeWithoutQueue()
 	{
 		$options = $this->get_options();
 
@@ -361,4 +461,34 @@ abstract class Kohana_Minion_Task {
 
 		return $output;
 	}
+
+
+    // php-resque job classes must implement perform() method
+    public function perform()
+    {
+        $this->execute();
+    }
+
+
+    // method to be executed before perform()
+    public function setUp()
+    {
+        $args = Arr::get((array) $this->job->payload['args'], 0, []);
+
+        // non task-specific options (--resque, --queue) have been unset already in execute() method
+//        if (array_key_exists(self::$queuingParameter, $args)) {
+//            // disable job cyclic queuing
+//            unset($args[self::$queuingParameter]);
+//        }
+
+        $this->_options = array_merge($this->_options, $args);
+        $this->token = $this->job->payload['id'];
+    }
+
+
+    // method to be executed after perform()
+    public function tearDown()
+    {
+//        Minion_CLI::write(">>> Finished job {$this->token}");
+    }
 }

@@ -1,7 +1,7 @@
 {
-	"name":        "kohana/minion",
+	"name":        "illusorium/kohana-minion",
 	"type":        "kohana-module",
-	"description": "The official kohana module for running tasks via the CLI",
+	"description": "Fork of official kohana module with support of queuing tasks",
 	"homepage":    "http://kohanaframework.org",
 	"license":     "BSD-3-Clause",
 	"keywords":    ["kohana", "framework", "task"],
@@ -20,9 +20,10 @@
 		"source":   "http://github.com/kohana/core"
 	},
 	"require": {
-		"composer/installers": "~1.0",
-		"kohana/core":         ">=3.3",
-		"php":                 ">=5.3.3"
+		"composer/installers":     "~1.0",
+		"kohana/core":             ">=3.3",
+		"chrisboulton/php-resque": "^1.2",
+		"php":                     ">=5.3.3"
 	},
     "require-dev": {
         "kohana/core":         "3.3.*@dev",
