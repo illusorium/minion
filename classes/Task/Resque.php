@@ -7,13 +7,19 @@ class Task_Resque extends Minion_Task {
     protected $logLevel;
 
     protected $_options = array(
-        'queue' => 'minion',
+        'queue' => NULL,
         'logging' => Resque_Worker::LOG_NONE
     );
 
     public function _execute(array $params)
     {
-        $this->queues = explode(',', $params['queue']);
+        if (!empty($params['queue'])) {
+            // custom queue[s]
+            $this->queues = explode(',', $params['queue']);
+        } else {
+            // default queue
+            $this->queues = $this->queueName;
+        }
         $this->logLevel = $params['logging'];
 
         $redisBackend = getenv('REDIS_BACKEND');
