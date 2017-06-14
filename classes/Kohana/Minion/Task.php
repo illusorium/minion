@@ -488,7 +488,7 @@ abstract class Kohana_Minion_Task {
 //            unset($args[self::$queuingParameter]);
 //        }
 
-        $this->_options += $args;
+        $this->_options = $args + $this->_options;
         $this->token = $this->job->payload['id'];
     }
 
