@@ -320,7 +320,7 @@ abstract class Kohana_Minion_Task {
                 // Queuing this task
                 $this->token = Resque::enqueue($this->queueName, $class, $this->_options, true);
 
-                Minion_CLI::write("Queued job $class with token {$this->token}");
+                Minion_CLI::write($this->token);
 
             } catch (Exception $e) {
                 Minion_CLI::write("Error queueing $class: {$e->getMessage()}");
