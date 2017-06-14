@@ -184,6 +184,8 @@ abstract class Kohana_Minion_Task {
 
 	protected $_method = '_execute';
 
+	// TODO marked __construct() public to prevent PHP Fatal error during job executing:
+	// Call to protected Kohana_Minion_Task::__construct() from context "Resque_Job";
 	public function __construct()
 	{
 		// Populate $_accepted_options based on keys from $_options
