@@ -130,7 +130,30 @@ abstract class Kohana_Minion_Task {
 
 		$class->set_options($options);
 
-		// Show the help page for this task if requested
+        if (get_class($class) != 'Task_Resque')
+        {
+            // check if the task has parameters with same names as queue options
+            if (array_key_exists(self::$queuingParameter, $class->_options))
+            {
+                if (in_array(self::$queuingParameter, $class->get_accepted_options()))
+                {
+                    throw new Minion_Exception_InvalidTask(
+                        'Queue parameter :param is used in task options',
+                        array(':param' => self::$queuingParameter)
+                    );
+                }
+
+                if ($class->allowCustomQueues AND in_array($class->customQueueParameter, $class->get_accepted_options()))
+                {
+                    throw new Minion_Exception_InvalidTask(
+                        'Queue parameter :param is used in task options',
+                        array(':param' => $class->customQueueParameter)
+                    );
+                }
+            }
+        }
+
+        // Show the help page for this task if requested
 		if (array_key_exists('help', $options))
 		{
 			$class->_method = '_help';
@@ -165,24 +188,6 @@ abstract class Kohana_Minion_Task {
 	{
 		// Populate $_accepted_options based on keys from $_options
 		$this->_accepted_options = array_keys($this->_options);
-
-        // check if the task has parameters with names of queue
-        if (array_key_exists(self::$queuingParameter, $this->_options)) {
-
-            if (array_key_exists(self::$queuingParameter, $this->get_accepted_options())) {
-                throw new Minion_Exception_InvalidTask(
-                    'Parameter :param is used in task options',
-                    array(':param' => self::$queuingParameter)
-                );
-            }
-
-            if (array_key_exists($this->customQueueParameter, $this->get_accepted_options())) {
-                throw new Minion_Exception_InvalidTask(
-                    'Parameter :param is used in task options',
-                    array(':param' => $this->customQueueParameter)
-                );
-            }
-        }
     }
 
 	/**
