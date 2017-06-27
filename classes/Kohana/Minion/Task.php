@@ -159,7 +159,19 @@ abstract class Kohana_Minion_Task {
 			$class->_method = '_help';
 		}
 
-		return $class;
+
+		/**
+         * Prevent "Error while sending QUERY packet" error
+         *
+         * @see https://github.com/chrisboulton/php-resque/issues/269
+         */
+        if (array_key_exists('database', Kohana::modules())) {
+            foreach (Database::$instances as $k => $v) {
+                unset(Database::$instances[$k]);
+            }
+        }
+
+        return $class;
 	}
 
 	/**
