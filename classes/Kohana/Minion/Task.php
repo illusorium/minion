@@ -55,7 +55,7 @@ abstract class Kohana_Minion_Task {
 	/**
 	 * Converts a task (e.g. db:migrate to a class name)
 	 *
-	 * @param string  Task name
+	 * @param string $task Task name
 	 * @return string Class name
 	 */
 	public static function convert_task_to_class_name($task)
@@ -87,7 +87,7 @@ abstract class Kohana_Minion_Task {
 	/**
 	 * Factory for loading minion tasks
 	 *
-	 * @param  array An array of command line options. It should contain the 'task' key
+	 * @param  array $options An array of command line options. It should contain the 'task' key
 	 * @throws Minion_Exception_InvalidTask
 	 * @return Minion_Task The Minion task
 	 */
@@ -196,7 +196,7 @@ abstract class Kohana_Minion_Task {
 
 	protected $_method = '_execute';
 
-	// TODO marked __construct() public to prevent PHP Fatal error during job executing:
+	// TODO declared __construct() public to prevent PHP Fatal error during job executing:
 	// Call to protected Kohana_Minion_Task::__construct() from context "Resque_Job";
 	public function __construct()
 	{
@@ -231,7 +231,7 @@ abstract class Kohana_Minion_Task {
 	 * Sets options for this task
 	 *
 	 * $param  array  the array of options to set
-	 * @return this
+	 * @return $this
 	 */
 	public function set_options(array $options)
 	{
@@ -272,7 +272,7 @@ abstract class Kohana_Minion_Task {
 	 *             ->rule('paramname', 'not_empty'); // Require this param
 	 *     }
 	 *
-	 * @param  Validation   the validation object to add rules to
+	 * @param  Validation $validation the validation object to add rules to
 	 *
 	 * @return Validation
 	 */
@@ -346,7 +346,7 @@ abstract class Kohana_Minion_Task {
 	/**
 	 * Execute the task with the specified set of options
 	 *
-	 * @return null
+	 * @return void
 	 */
 	public function executeWithoutQueue()
 	{
@@ -375,7 +375,7 @@ abstract class Kohana_Minion_Task {
 	/**
 	 * Outputs help for this task
 	 *
-	 * @return null
+	 * @return void
 	 */
 	protected function _help(array $params)
 	{
@@ -407,7 +407,7 @@ abstract class Kohana_Minion_Task {
 	 *
 	 * Based on the code in Kodoc::parse()
 	 *
-	 * @param string The comment to parse
+	 * @param string $comment The comment to parse
 	 * @return array First element is the comment, second is an array of tags
 	 */
 	protected function _parse_doccomment($comment)
@@ -451,8 +451,8 @@ abstract class Kohana_Minion_Task {
 	/**
 	 * Compiles a list of available tasks from a directory structure
 	 *
-	 * @param  array Directory structure of tasks
-	 * @param  string prefix
+	 * @param  array $files Directory structure of tasks
+	 * @param  string $prefix
 	 * @return array Compiled tasks
 	 */
 	protected function _compile_task_list(array $files, $prefix = '')
