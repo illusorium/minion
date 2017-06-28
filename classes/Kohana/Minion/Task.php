@@ -342,11 +342,39 @@ abstract class Kohana_Minion_Task {
                 }
             }
 
+            if (array_key_exists($this->outputFileParameter, $this->_options)) {
+
+                $saveOutput =
+                    is_null($this->_options[$this->outputFileParameter])
+                    || !empty($this->_options[$this->outputFileParameter]);
+
+                if (!empty($saveOutput)) {
+                    // create tmp file for job output
+                    $this->outputFile = tempnam(sys_get_temp_dir(), uniqid('job_' . time() . '_'));
+                    $this->set_options(array('outputFile' => $this->outputFile));
+                }
+                unset($this->_options[$this->outputFileParameter]);
+            }
+
             try {
                 // Queuing this task
                 $this->token = Resque::enqueue($this->queueName, $class, $this->_options, true);
 
-                echo $this->token;
+                $return = array(
+                    'id' => $this->token
+                );
+                if (!empty($saveOutput)) {
+                    $return['file'] = $this->outputFile;
+                }
+
+                if (PHP_SAPI == 'cli') {
+                    Minion_CLI::write('Created job: ' . Minion_CLI::color($return['id'], 'green'));
+                    if (!empty($return['file'])) {
+                        Minion_CLI::write('Redirect output to file: ' . Minion_CLI::color($return['file'], 'green'));
+                    }
+                } else {
+                    return $return;
+                }
 
             } catch (Exception $e) {
                 Minion_CLI::write("Error queueing $class: {$e->getMessage()}");
@@ -499,17 +527,15 @@ abstract class Kohana_Minion_Task {
     // method to be executed before perform()
     public function setUp()
     {
-        $this->token = $this->job->payload['id'];
-        $args = Arr::get((array) $this->job->payload['args'], 0, []);
-        if (array_key_exists($this->outputFileParameter, $args)) {
+        /** @var Resque_Job $job */
+        $job = $this->job;
 
-            $saveOutput = is_null($args[$this->outputFileParameter]) || !empty($args[$this->outputFileParameter]);
-            unset($args[$this->outputFileParameter]);
+        $this->token = $job->payload['id'];
+        $args = $job->getArguments();
 
-            // create tmp file for job output
-            if ($saveOutput) {
-                $this->outputFile = tempnam(sys_get_temp_dir(), "job-{$this->token}_");
-            }
+        if (array_key_exists('outputFile', $args)) {
+            $this->outputFile = $args['outputFile'];
+            unset($args['outputFile']);
         }
 
         $this->_options = $args + $this->_options;
@@ -521,6 +547,7 @@ abstract class Kohana_Minion_Task {
     {
         if (!empty($this->outputFile)) {
             // save job output to buffer
+            Minion_CLI::write("Starting job " . Minion_CLI::color($this->token, 'yellow') . " with output buffering");
             Minion_CLI::$useEcho = true;
             ob_start();
         }
@@ -529,8 +556,8 @@ abstract class Kohana_Minion_Task {
 
         if (!empty($this->outputFile)) {
             file_put_contents($this->outputFile, ob_get_clean());
-            echo $this->outputFile . PHP_EOL;
             Minion_CLI::$useEcho = false;
+            Minion_CLI::write("Finished job " . Minion_CLI::color($this->token, 'yellow'));
         }
     }
 
