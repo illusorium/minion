@@ -46,6 +46,12 @@ abstract class Kohana_Minion_Task {
     protected $token;
 
 
+    /**
+     * Parameters for saving job output
+     */
+    protected $outputFileParameter = 'save';
+    protected $outputFile;
+
 	 /**
 	 * The separator used to separate different levels of tasks
 	 * @var string
@@ -160,6 +166,14 @@ abstract class Kohana_Minion_Task {
                     throw new Minion_Exception_InvalidTask(
                         'Queue parameter :param is used in task options',
                         array(':param' => $class->customQueueParameter)
+                    );
+                }
+
+                if (in_array($class->outputFileParameter, $class->get_accepted_options()))
+                {
+                    throw new Minion_Exception_InvalidTask(
+                        'Parameter :param is used in task options',
+                        array(':param' => $class->outputFileParameter)
                     );
                 }
             }
@@ -332,7 +346,7 @@ abstract class Kohana_Minion_Task {
                 // Queuing this task
                 $this->token = Resque::enqueue($this->queueName, $class, $this->_options, true);
 
-                Minion_CLI::write($this->token);
+                echo $this->token;
 
             } catch (Exception $e) {
                 Minion_CLI::write("Error queueing $class: {$e->getMessage()}");
@@ -482,32 +496,50 @@ abstract class Kohana_Minion_Task {
 	}
 
 
-    // php-resque job classes must implement perform() method
-    public function perform()
-    {
-        $this->execute();
-    }
-
-
     // method to be executed before perform()
     public function setUp()
     {
+        $this->token = $this->job->payload['id'];
         $args = Arr::get((array) $this->job->payload['args'], 0, []);
+        if (array_key_exists($this->outputFileParameter, $args)) {
 
-        // non task-specific options (--resque, --queue) have been unset already in execute() method
-//        if (array_key_exists(self::$queuingParameter, $args)) {
-//            // disable job cyclic queuing
-//            unset($args[self::$queuingParameter]);
-//        }
+            $saveOutput = is_null($args[$this->outputFileParameter]) || !empty($args[$this->outputFileParameter]);
+            unset($args[$this->outputFileParameter]);
+
+            // create tmp file for job output
+            if ($saveOutput) {
+                $this->outputFile = tempnam(sys_get_temp_dir(), "job-{$this->token}_");
+            }
+        }
 
         $this->_options = $args + $this->_options;
-        $this->token = $this->job->payload['id'];
+    }
+
+
+    // php-resque job classes must implement perform() method
+    public function perform()
+    {
+        if (!empty($this->outputFile)) {
+            // save job output to buffer
+            Minion_CLI::$useEcho = true;
+            ob_start();
+        }
+
+        $this->execute();
+
+        if (!empty($this->outputFile)) {
+            file_put_contents($this->outputFile, ob_get_clean());
+            echo $this->outputFile . PHP_EOL;
+            Minion_CLI::$useEcho = false;
+        }
     }
 
 
     // method to be executed after perform()
     public function tearDown()
     {
-//        Minion_CLI::write(">>> Finished job {$this->token}");
+//        if (!empty($this->outputFile)) {
+//            unlink($this->outputFile);
+//        }
     }
 }

@@ -4,7 +4,15 @@ class Kohana_Minion_CLI {
 
 	public static $wait_msg = 'Press any key to continue...';
 
-	protected static $foreground_colors = array(
+    /**
+     * Whether to echo strings in write() method instead of writing them to STDOUT.
+     * Used during execution of queued job to save its output to file
+     *
+     * @var bool
+     */
+    public static $useEcho = false;
+
+    protected static $foreground_colors = array(
 		'black'        => '0;30',
 		'dark_gray'    => '1;30',
 		'blue'         => '0;34',
@@ -199,6 +207,10 @@ class Kohana_Minion_CLI {
 			{
 				Minion_CLI::write($line);
 			}
+		}
+		elseif (self::$useEcho)
+		{
+			echo $text . PHP_EOL;
 		}
 		else
 		{
