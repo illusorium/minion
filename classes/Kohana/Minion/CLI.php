@@ -324,4 +324,60 @@ class Kohana_Minion_CLI {
 		return $string;
 	}
 
+
+    /**
+     * Converts given text so that it could be displayed in browser with saving colors
+     * This is opposite to Minion_CLI::color() method
+     *
+     * @param string $text                 CLI output
+     * @param bool $replaceEolToBr    Whether to replace PHP_EOL to '<br />' tags
+     * @param bool $saveColors             Whether to convert matched colors to its titles
+     * @return string
+     */
+    public static function prepareStringForBrowser($text, $replaceEolToBr = true, $saveColors = true)
+    {
+        $pattern = '|(?:\\033\[([0-9;]+)m)?\\033\[([0-9;]+)m(.+?)\\033\[0m|';
+
+        if ($saveColors) {
+
+            $text = preg_replace_callback(
+                $pattern,
+                function ($match) {
+                    if (!empty($match[1])) {
+                        if (strpos($match[1], ';')) {
+                            // Order of foreground and background colors is not important, result will be the same
+                            $foreground = $match[1];
+                            $background = $match[2];
+                        } else {
+                            $background = $match[1];
+                            $foreground = $match[2];
+                        }
+                    } elseif (strpos($match[2], ';')) {
+                        $foreground = $match[2];
+                    } else {
+                        $background = $match[2];
+                    }
+
+                    $result = '<span style="';
+                    if (!empty($foreground)) {
+                        $result .= 'color:' . array_search($foreground, Minion_CLI::$foreground_colors) .';';
+                    }
+                    if (!empty($background)) {
+                        $result .= 'background:' . array_search($background, Minion_CLI::$background_colors) . ';';
+                    }
+                    $result .= '">' . $match[3] . '</span>';
+                    return $result;
+                },
+                $text
+            );
+
+        } else {
+
+            $text = preg_replace($pattern, '$3', $text);
+
+        }
+
+        return $replaceEolToBr ? str_replace(PHP_EOL, '<br />', $text) : $text;
+    }
+
 }
